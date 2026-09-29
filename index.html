@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pannello Amministrativo URP - LoSegnalo BPDG</title>
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Google Fonts & Bootstrap Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+  <!-- Firebase SDK Compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --primary-color: #0f172a;
+      --accent-color: #2563eb;
+      --bg-light: #f8fafc;
+      --border-color: #e2e8f0;
+      --sidebar-width: 260px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-light);
+      color: #334155;
+    }
+
+    /* Login Layout */
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      border: none;
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Dashboard Layout */
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: var(--sidebar-width);
+      background-color: var(--primary-color);
+      color: #fff;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-brand {
+      padding: 1.5rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .sidebar-menu {
+      padding: 1rem 0;
+      flex-grow: 1;
+    }
+
+    .nav-link-custom {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.85rem 1.5rem;
+      color: #94a3b8;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .nav-link-custom:hover, .nav-link-custom.active {
+      color: #fff;
+      background-color: rgba(255, 255, 255, 0.08);
+      border-left: 4px solid var(--accent-color);
+    }
+
+    .main-content {
+      margin-left: var(--sidebar-width);
+      flex-grow: 1;
+      padding: 2rem;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .card-dashboard {
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+      background-color: #fff;
+    }
+
+    .table th {
+      font-weight: 600;
+      font-size: 0.80rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      background-color: #f8fafc;
+    }
+
+    /* Tabella ridotta nei caratteri come richiesto */
+    .table-compact {
+      font-size: 0.85rem;
+    }
+    
+    .img-detail-view {
+      max-width: 100%;
+      max-height: 250px;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PAGE LOGIN -->
+  <div id="loginSection" class="login-container">
+    <div class="card login-card p-4">
+      <div class="card-body">
+        <div class="text-center mb-4">
+          <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px;">
+            <i class="bi bi-building fs-3"></i>
+          </div>
+          <h4 class="fw-bold mb-1">Pannello Admin URP</h4>
+          <p class="text-muted small">Comune di Barcellona Pozzo di Gotto</p>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Indirizzo Email</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+            <input type="email" id="emailInput" class="form-control" placeholder="email di accesso">
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label small fw-semibold">Password</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input type="password" id="passwordInput" class="form-control" placeholder="••••••••">
+            <button class="btn btn-outline-secondary" type="button" id="btnTogglePassword" onclick="togglePasswordVisibility()">
+              <i class="bi bi-eye" id="iconEye"></i>
+            </button>
+          </div>
+        </div>
+        <button class="btn btn-primary w-100 py-2 fw-semibold" onclick="login()">
+          <i class="bi bi-box-arrow-in-right me-2"></i> Accedi al Sistema
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD PRINCIPALE -->
+  <div id="dashboardSection" class="app-layout" style="display:none;">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <i class="bi bi-shield-check fs-4 text-primary"></i>
+        <span>LoSegnalo Admin</span>
+      </div>
+      <div class="sidebar-menu">
+        <a href="#" class="nav-link-custom active" onclick="switchTab('tabNuove', this)">
+          <i class="bi bi-inbox fs-5"></i>
+          <span>Da Approvare</span>
+        </a>
+        <a href="#" class="nav-link-custom" onclick="switchTab('tabMappa', this)">
+          <i class="bi bi-map fs-5"></i>
+          <span>Mappa & Pubblicate</span>
+        </a>
+        <a href="#" class="nav-link-custom" onclick="switchTab('tabNews', this)">
+          <i class="bi bi-newspaper fs-5"></i>
+          <span>NEWS</span>
+        </a>
+        <a href="#" class="nav-link-custom" onclick="switchTab('tabSponsor', this)">
+          <i class="bi bi-handbag fs-5"></i>
+          <span>Sponsor</span>
+        </a>
+      </div>
+      <div class="p-3 border-top border-secondary">
+        <button class="btn btn-outline-light w-100 btn-sm" onclick="logout()">
+          <i class="bi bi-box-arrow-left me-2"></i> Disconnetti
+        </button>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="main-content">
+      <div class="header-bar">
+        <div>
+          <h3 class="fw-bold mb-1" id="sectionTitle">Segnalazioni Da Approvare</h3>
+          <p class="text-muted small mb-0">Gestione e moderazione delle segnalazioni inviate dai cittadini</p>
+        </div>
+        <div>
+          <span class="badge bg-light text-dark border px-3 py-2" id="userEmailBadge">
+            <i class="bi bi-person-circle me-1"></i> --
+          </span>
+        </div>
+      </div>
+
+      <!-- SEZIONE 1: DA APPROVARE -->
+      <div id="tabNuove" class="tab-content-item">
+        <div class="card card-dashboard p-3">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Foto</th>
+                  <th>ID</th>
+                  <th>Data</th>
+                  <th>Categoria</th>
+                  <th>Indirizzo</th>
+                  <th>Descrizione</th>
+                  <th>Segnalatore</th>
+                  <th>Privacy / Foto Pub.</th>
+                  <th class="text-end">Azioni Operatore</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyDaApprovare"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEZIONE 2: MAPPA & PUBBLICATE -->
+      <div id="tabMappa" class="tab-content-item" style="display:none;">
+        <!-- Barra strumenti e Filtri -->
+        <div class="card card-dashboard p-3 mb-3">
+          <div class="row align-items-center g-2">
+            <div class="col-md-4">
+              <h5 class="mb-0 fw-bold">Registro Segnalazioni Attive</h5>
+            </div>
+            <div class="col-md-8 d-flex flex-wrap justify-content-md-end gap-2 align-items-center">
+              <!-- Filtro per Stato Risoluzione -->
+              <select class="form-select form-select-sm w-auto" id="filtroStato" onchange="applicaFiltriPubblicate()">
+                <option value="tutti">Stato: Tutti</option>
+                <option value="in_lavorazione">In Lavorazione</option>
+                <option value="risolta">Risolte</option>
+              </select>
+
+              <!-- Filtro per Categoria -->
+              <select class="form-select form-select-sm w-auto" id="filtroCategoria" onchange="applicaFiltriPubblicate()">
+                <option value="tutte">Categoria: Tutte</option>
+                <option value="Buche e manto stradale">Buche e manto stradale</option>
+                <option value="Illuminazione pubblica">Illuminazione pubblica</option>
+                <option value="Impianto idrico">Impianto idrico</option>
+                <option value="Fognatura">Fognatura</option>
+                <option value="Rifiuti e decoro urbano">Rifiuti e decoro urbano</option>
+                <option value="Segnaletica stradale">Segnaletica stradale</option>
+                <option value="Verde pubblico">Verde pubblico</option>
+                <option value="Altro">Altro</option>
+              </select>
+
+              <button class="btn btn-outline-warning btn-sm fw-semibold" id="btnSyncMappa" onclick="ripristinaMappaDaPubblicate()">
+                <i class="bi bi-arrow-clockwise me-1"></i> Sincronizza
+              </button>
+              <button class="btn btn-success btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#modalNuovaSegnalazioneModal">
+                <i class="bi bi-plus-lg me-1"></i> Nuova
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-dashboard p-3">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 table-compact">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Data</th>
+                  <th>Categoria</th>
+                  <th>Indirizzo</th>
+                  <th>Protocollo URP / Note</th>
+                  <th>Privacy / Foto Pub.</th>
+                  <th>Stato Risoluzione</th>
+                  <th class="text-end">Azioni</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyPubblicate"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEZIONE 3: NEWS -->
+      <div id="tabNews" class="tab-content-item" style="display:none;">
+        <div class="d-flex justify-content-between mb-3">
+          <h5>Elenco Notizie (NEWS)</h5>
+          <button class="btn btn-primary btn-sm fw-semibold" onclick="apriModalNews()">
+            <i class="bi bi-plus-lg me-1"></i> Pubblica Nuova News
+          </button>
+        </div>
+        <div class="card card-dashboard p-3">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Titolo</th>
+                  <th>Data e Ora</th>
+                  <th>Stato Pubblicazione</th>
+                  <th>Contenuto</th>
+                  <th class="text-end">Azioni</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyNews"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEZIONE 4: SPONSOR -->
+      <div id="tabSponsor" class="tab-content-item" style="display:none;">
+        <div class="d-flex justify-content-between mb-3">
+          <h5>Sponsor & Partners</h5>
+          <button class="btn btn-primary btn-sm fw-semibold" onclick="apriModalSponsor()">
+            <i class="bi bi-plus-lg me-1"></i> Inserisci Partner
+          </button>
+        </div>
+        <div class="card card-dashboard p-3">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Logo</th>
+                  <th>Nome Partner</th>
+                  <th>Ordine</th>
+                  <th>Stato Pubblicazione</th>
+                  <th>Link & Descrizione</th>
+                  <th class="text-end">Azioni</th>
+                </tr>
+              </thead>
+              <tbody id="tbodySponsor"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL NUOVA SEGNALAZIONE COMPLETA -->
+  <div class="modal fade" id="modalNuovaSegnalazioneModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Nuova Segnalazione URP</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formNuovaSegnalazione">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Categoria Autorizzata</label>
+                <select class="form-select" id="newCat" required>
+                  <option value="Buche e manto stradale">Buche e manto stradale</option>
+                  <option value="Illuminazione pubblica">Illuminazione pubblica</option>
+                  <option value="Impianto idrico">Impianto idrico</option>
+                  <option value="Fognatura">Fognatura</option>
+                  <option value="Rifiuti e decoro urbano">Rifiuti e decoro urbano</option>
+                  <option value="Segnaletica stradale">Segnaletica stradale</option>
+                  <option value="Verde pubblico">Verde pubblico</option>
+                  <option value="Altro">Altro</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Indirizzo / Posizione</label>
+                <input type="text" class="form-control" id="newIndirizzo" placeholder="es. Via Roma, 12" required>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small">Nome e Cognome</label>
+                <input type="text" class="form-control" id="newSegnalatore" placeholder="Nome Segnalatore">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small">Email</label>
+                <input type="email" class="form-control" id="newEmail" placeholder="email@dominio.it">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small">Telefono</label>
+                <input type="tel" class="form-control" id="newTelefono" placeholder="333 1234567">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Latitudine</label>
+                <input type="number" step="any" class="form-control" id="newLat" value="38.1472">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Longitudine</label>
+                <input type="number" step="any" class="form-control" id="newLng" value="15.2136">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Consenso Privacy</label>
+                <select class="form-select" id="newPrivacy">
+                  <option value="SI">SI</option>
+                  <option value="NO">NO</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Pubblicazione Foto</label>
+                <select class="form-select" id="newPubblicazioneFoto">
+                  <option value="SI">SI</option>
+                  <option value="NO">NO</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold small">Descrizione del Problema</label>
+                <textarea class="form-control" id="newDesc" rows="3" placeholder="Dettagli sul disservizio..." required></textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold small">Nota Protocollo URP / Stato</label>
+                <input type="text" class="form-control" id="newStato" placeholder="es. Ricevuta dall'URP prot. 1024 del 25/09/26">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold small">Allegato Foto (Opzionale)</label>
+                <input type="file" class="form-control" id="newFotoInput" accept="image/*">
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="button" class="btn btn-primary" id="btnSalvaSegnalazione" onclick="confermaNuovaSegnalazione()">
+            <i class="bi bi-save me-1"></i> Salva e Pubblica
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MODIFICA DETTAGLIATA SEGNALAZIONE -->
+  <div class="modal fade" id="modalModificaSegnalazione" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Dettagli & Modifica Segnalazione <span id="editModalDocId" class="text-primary"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editDocId">
+          <div class="row g-3">
+            <div class="col-12 text-center mb-2" id="editFotoContainer"></div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Categoria</label>
+              <select class="form-select" id="editCat">
+                <option value="Buche e manto stradale">Buche e manto stradale</option>
+                <option value="Illuminazione pubblica">Illuminazione pubblica</option>
+                <option value="Impianto idrico">Impianto idrico</option>
+                <option value="Fognatura">Fognatura</option>
+                <option value="Rifiuti e decoro urbano">Rifiuti e decoro urbano</option>
+                <option value="Segnaletica stradale">Segnaletica stradale</option>
+                <option value="Verde pubblico">Verde pubblico</option>
+                <option value="Altro">Altro</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Indirizzo</label>
+              <input type="text" class="form-control" id="editIndirizzo">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Segnalatore</label>
+              <input type="text" class="form-control" id="editSegnalatore">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Email</label>
+              <input type="email" class="form-control" id="editEmail">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Telefono</label>
+              <input type="tel" class="form-control" id="editTelefono">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Latitudine</label>
+              <input type="number" step="any" class="form-control" id="editLat">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Longitudine</label>
+              <input type="number" step="any" class="form-control" id="editLng">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Consenso Privacy</label>
+              <select class="form-select" id="editPrivacy">
+                <option value="SI">SI</option>
+                <option value="NO">NO</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Pubblicazione Foto</label>
+              <select class="form-select" id="editPubblicazioneFoto">
+                <option value="SI">SI</option>
+                <option value="NO">NO</option>
+              </select>
+            </div>
+
+            <!-- Campi per le notifiche a 30gg e 60gg -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Notifica 30gg Inviata</label>
+              <select class="form-select" id="editNotifica30">
+                <option value="true">Sì (true)</option>
+                <option value="false">No (false)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Notifica 60gg Inviata</label>
+              <select class="form-select" id="editNotifica60">
+                <option value="true">Sì (true)</option>
+                <option value="false">No (false)</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label fw-semibold small">Descrizione</label>
+              <textarea class="form-control" id="editDesc" rows="3"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold small">Nota Protocollo URP / Stato</label>
+              <input type="text" class="form-control" id="editStato">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="button" class="btn btn-primary" onclick="salvaModificheDettagliate()">
+            <i class="bi bi-check-circle me-1"></i> Aggiorna Segnalazione
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GESTIONE NEWS -->
+  <div class="modal fade" id="modalNews" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="newsModalTitle">Gestione News</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="newsId">
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Titolo Notizia</label>
+            <input type="text" class="form-control" id="newsTitolo" placeholder="es. Interruzione idrica in Via Roma">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Pubblicata</label>
+            <select class="form-select" id="newsPubblicata">
+              <option value="true">Sì (true)</option>
+              <option value="false">No (false)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Contenuto / Testo</label>
+            <textarea class="form-control" id="newsTesto" rows="4" placeholder="Dettagli della notizia..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="button" class="btn btn-primary" onclick="salvaNews()">
+            <i class="bi bi-save me-1"></i> Salva News
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GESTIONE SPONSOR -->
+  <div class="modal fade" id="modalSponsor" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="sponsorModalTitle">Gestione Sponsor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="sponsorId">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label fw-semibold small">Nome Partner / Sponsor</label>
+              <input type="text" class="form-control" id="sponsorNome" placeholder="Nome dell'azienda o partner">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold small">Ordine (es. 1, 2, 3...)</label>
+              <input type="number" class="form-control" id="sponsorOrdine" value="1">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold small">URL Immagine / Logo</label>
+              <input type="url" class="form-control" id="sponsorImmagineUrl" placeholder="https://raw.githubusercontent.com/...">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold small">Link URL (Sito web o pagina social)</label>
+              <input type="url" class="form-control" id="sponsorLinkUrl" placeholder="https://www.facebook.com/">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Pubblicato</label>
+              <select class="form-select" id="sponsorPubblicato">
+                <option value="true">Sì (true)</option>
+                <option value="false">No (false)</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold small">Descrizione</label>
+              <textarea class="form-control" id="sponsorDescrizione" rows="3" placeholder="Obiettivo o dettagli dello sponsor..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="button" class="btn btn-primary" onclick="salvaSponsor()">
+            <i class="bi bi-save me-1"></i> Salva Sponsor
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configurazione Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBpxZs87B5YxHc6atLMPIN17IXR2sjNv7I",
+      authDomain: "lo-segnalo-bpdg.firebaseapp.com",
+      projectId: "lo-segnalo-bpdg",
+      storageBucket: "lo-segnalo-bpdg.firebasestorage.app",
+      messagingSenderId: "667124710994",
+      appId: "1:667124710994:web:6d16e2da80032a7002698b"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Cache globale per gestire i filtri in tempo reale
+    let cacheSegnalazioniPubblicate = [];
+
+    // Funzione per mostrare/nascondere la password dal campo di login
+    function togglePasswordVisibility() {
+      const passwordInput = document.getElementById('passwordInput');
+      const iconEye = document.getElementById('iconEye');
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        iconEye.classList.remove('bi-eye');
+        iconEye.classList.add('bi-eye-slash');
+      } else {
+        passwordInput.type = 'password';
+        iconEye.classList.remove('bi-eye-slash');
+        iconEye.classList.add('bi-eye');
+      }
+    }
+
+    // Stato Autenticazione (RICARICA TUTTE LE SEZIONI CORRETTAMENTE)
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('dashboardSection').style.display = 'flex';
+        document.getElementById('userEmailBadge').innerHTML = `<i class="bi bi-person-circle me-1"></i> ${user.email}`;
+        
+        // Chiamate di caricamento per tutte le sezioni
+        caricaSegnalazioniDaApprovare();
+        caricaSegnalazioniPubblicate();
+        caricaNews();
+        caricaSponsor();
+      } else {
+        document.getElementById('loginSection').style.display = 'flex';
+        document.getElementById('dashboardSection').style.display = 'none';
+      }
+    });
+
+    function login() {
+      const email = document.getElementById('emailInput').value;
+      const pass = document.getElementById('passwordInput').value;
+      auth.signInWithEmailAndPassword(email, pass).catch(err => alert("Errore di accesso: " + err.message));
+    }
+
+    function logout() { auth.signOut(); }
+
+    function switchTab(tabId, element) {
+      document.querySelectorAll('.tab-content-item').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.nav-link-custom').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).style.display = 'block';
+      element.classList.add('active');
+
+      const titles = {
+        'tabNuove': 'Segnalazioni Da Approvare',
+        'tabMappa': 'Mappa & Segnalazioni Pubblicate',
+        'tabNews': 'Gestione NEWS',
+        'tabSponsor': 'Gestione Sponsor'
+      };
+      document.getElementById('sectionTitle').innerText = titles[tabId];
+    }
+
+    // Helper per convertire booleani / stringhe in formato SI / NO
+    function normalizzaSiNo(val) {
+      if (val === true || val === 'SI' || val === 'true' || val === 'si') return 'SI';
+      return 'NO';
+    }
+
+    // Helper per recuperare la Categoria indipendentemente dalla maiuscola/minuscola del campo
+    function getCategoriaFormattata(dati) {
+      if (!dati) return 'Generica';
+      return dati.Categoria || dati.categoria || 'Generica';
+    }
+
+    // Helper per formattare la Data e Ora
+    function formattaData(timestamp) {
+      if (!timestamp) return '--';
+      if (timestamp.toDate) return new Date(timestamp.toDate()).toLocaleString('it-IT');
+      return new Date(timestamp).toLocaleString('it-IT');
+    }
+
+    // Helper per convertire la foto in Blob (bytes) nativo di Firestore
+    function getFotoBlob(file) {
+      return new Promise((resolve, reject) => {
+        if (!file) {
+          resolve(firebase.firestore.Blob.fromUint8Array(new Uint8Array(0)));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const arrayBuffer = e.target.result;
+          const uint8Array = new Uint8Array(arrayBuffer);
+          const blob = firebase.firestore.Blob.fromUint8Array(uint8Array);
+          resolve(blob);
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // Helper per renderizzare sia Blob che Stringhe/URL nelle anteprime
+    function generaSrcAnteprima(foto, linkFoto) {
+      if (linkFoto && linkFoto.length > 0) return linkFoto;
+      if (!foto) return '';
+      
+      if (foto.toBase64) {
+        const base64Str = foto.toBase64();
+        return base64Str ? `data:image/jpeg;base64,${base64Str}` : '';
+      }
+      if (typeof foto === 'string' && foto.length > 0) {
+        return foto.startsWith('data:') ? foto : `data:image/jpeg;base64,${foto}`;
+      }
+      return '';
+    }
+
+    // RIPRISTINO MAPPA CON SCRITTURE SINGOLE PER EVITARE IL LIMITE DI 1 MB
+    async function ripristinaMappaDaPubblicate() {
+      if (!confirm("Vuoi sincronizzare la mappa ripristinando tutte le segnalazioni pubblicate?")) return;
+
+      const btn = document.getElementById('btnSyncMappa');
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Sincronizzazione...`;
+
+      try {
+        const pubSnapshot = await db.collection('segnalazioni_pubblicate').get();
+        let conteggio = 0;
+
+        for (const doc of pubSnapshot.docs) {
+          const d = doc.data();
+          await db.collection('segnalazioni_mappa').doc(doc.id).set({
+            ID: d.ID || doc.id,
+            'Data e Ora': d['Data e Ora'] || firebase.firestore.Timestamp.now(),
+            Categoria: getCategoriaFormattata(d),
+            Descrizione: d.Descrizione || '',
+            Latitudine: d.Latitudine || 38.1472,
+            Longitudine: d.Longitudine || 15.2136,
+            Indirizzo: d.Indirizzo || '',
+            Privacy: normalizzaSiNo(d.Privacy),
+            'Pubblicazione foto': normalizzaSiNo(d['Pubblicazione foto']),
+            'Link Foto': d['Link Foto'] || '',
+            Foto: d.Foto || firebase.firestore.Blob.fromUint8Array(new Uint8Array(0)),
+            stato: d.stato || "In lavorazione",
+            risolta: d.risolta || false,
+            'Segnala ancora presente': 0,
+            'Segnala risolta': 0
+          });
+          conteggio++;
+        }
+
+        alert(`Sincronizzazione completata! ${conteggio} segnalazioni ripristinate con successo in mappa.`);
+      } catch (err) {
+        alert("Errore durante la sincronizzazione: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-arrow-clockwise me-1"></i> Sincronizza`;
+      }
+    }
+
+    // 1. DA APPROVARE
+    function caricaSegnalazioniDaApprovare() {
+      db.collection('segnalazioni').onSnapshot(snapshot => {
+        const tbody = document.getElementById('tbodyDaApprovare');
+        tbody.innerHTML = '';
+        
+        let count = 0;
+        snapshot.forEach(doc => {
+          const d = doc.data();
+          if (d.approvata === 'SI') return;
+
+          count++;
+          const fotoUrl = generaSrcAnteprima(d.Foto, d['Link Foto']);
+          const valPrivacy = normalizzaSiNo(d.Privacy);
+          const valPubFoto = normalizzaSiNo(d['Pubblicazione foto']);
+          const categoria = getCategoriaFormattata(d);
+
+          tbody.innerHTML += `
+            <tr>
+              <td>${fotoUrl ? `<img src="${fotoUrl}" class="img-preview" style="width:50px;height:50px;object-fit:cover;border-radius:6px;">` : `<div class="bg-light text-center text-muted" style="width:50px;height:50px;line-height:50px;border-radius:6px;"><i class="bi bi-image"></i></div>`}</td>
+              <td><span class="fw-bold">${d.ID || doc.id}</span></td>
+              <td><small>${formattaData(d['Data e Ora'])}</small></td>
+              <td><span class="badge bg-secondary">${categoria}</span></td>
+              <td>${d.Indirizzo || ''}</td>
+              <td style="max-width:180px;" class="text-truncate">${d.Descrizione || ''}</td>
+              <td><small>${d.Segnalatore || ''}<br><span class="text-muted">${d.Email || ''}</span></small></td>
+              <td>
+                <small>Privacy: <span class="badge ${valPrivacy === 'SI' ? 'bg-success' : 'bg-danger'}">${valPrivacy}</span></small><br>
+                <small>Foto: <span class="badge ${valPubFoto === 'SI' ? 'bg-success' : 'bg-danger'}">${valPubFoto}</span></small>
+              </td>
+              <td class="text-end">
+                <button class="btn btn-sm btn-success me-1" onclick="approvaSegnalazione('${doc.id}')" title="Approva"><i class="bi bi-check-lg"></i> Approva</button>
+                <button class="btn btn-sm btn-outline-warning me-1" onclick="apriModalModifica('${doc.id}', 'segnalazioni')"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="eliminaSegnalazioneDaApprovare('${doc.id}')"><i class="bi bi-trash"></i></button>
+              </td>
+            </tr>
+          `;
+        });
+
+        if (count === 0) {
+          tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Nessuna segnalazione in attesa di approvazione.</td></tr>`;
+        }
+      }, error => {
+        console.warn("Errore caricamento segnalazioni da approvare:", error);
+      });
+    }
+
+    async function approvaSegnalazione(docId) {
+      const protocollo = prompt("Inserisci la nota con il protocollo URP (es. 'Ricevuta dall'URP prot. 1716 del 23/06/26'):");
+      if (!protocollo) return;
+
+      const docRef = await db.collection('segnalazioni').doc(docId).get();
+      const dati = docRef.data();
+      const batch = db.batch();
+
+      batch.update(db.collection('segnalazioni').doc(docId), { approvata: 'SI' });
+
+      batch.set(db.collection('segnalazioni_pubblicate').doc(docId), {
+        ...dati,
+        Categoria: getCategoriaFormattata(dati),
+        stato: protocollo,
+        risolta: false,
+        notifica30Inviata: false,
+        notifica60Inviata: false
+      });
+
+      batch.set(db.collection('segnalazioni_mappa').doc(docId), {
+        ID: dati.ID,
+        'Data e Ora': dati['Data e Ora'],
+        Categoria: getCategoriaFormattata(dati),
+        Descrizione: dati.Descrizione,
+        Latitudine: dati.Latitudine,
+        Longitudine: dati.Longitudine,
+        Indirizzo: dati.Indirizzo,
+        Privacy: normalizzaSiNo(dati.Privacy),
+        'Pubblicazione foto': normalizzaSiNo(dati['Pubblicazione foto']),
+        'Link Foto': dati['Link Foto'] || '',
+        Foto: dati.Foto || firebase.firestore.Blob.fromUint8Array(new Uint8Array(0)),
+        stato: protocollo,
+        risolta: false,
+        notifica30Inviata: false,
+        notifica60Inviata: false,
+        'Segnala ancora presente': 0,
+        'Segnala risolta': 0
+      });
+
+      await batch.commit();
+      alert("Segnalazione approvata e pubblicata sulla mappa!");
+    }
+
+    async function eliminaSegnalazioneDaApprovare(docId) {
+      if (confirm("Sei sicuro di voler eliminare definitivamente questa segnalazione e decrementare il contatore?")) {
+        try {
+          const counterRef = db.collection('configurazione').doc('contatore_segnalazioni');
+
+          await db.runTransaction(async (transaction) => {
+            const segRef = db.collection('segnalazioni').doc(docId);
+            const counterDoc = await transaction.get(counterRef);
+
+            transaction.delete(segRef);
+
+            if (counterDoc.exists && counterDoc.data().ultimoNumero > 0) {
+              const nuovoNumero = counterDoc.data().ultimoNumero - 1;
+              transaction.update(counterRef, { ultimoNumero: nuovoNumero });
+            }
+          });
+
+          alert("Segnalazione eliminata e contatore aggiornato con successo!");
+        } catch (err) {
+          alert("Errore durante l'eliminazione: " + err.message);
+        }
+      }
+    }
+
+    // 2. PUBBLICATE E MAPPA (Gestione con filtri e fallback)
+    function caricaSegnalazioniPubblicate() {
+      db.collection('segnalazioni_pubblicate').onSnapshot(snapshot => {
+        cacheSegnalazioniPubblicate = [];
+        snapshot.forEach(doc => {
+          cacheSegnalazioniPubblicate.push({ id: doc.id, ...doc.data() });
+        });
+        applicaFiltriPubblicate();
+      }, error => {
+        console.warn("Errore caricamento segnalazioni pubblicate:", error);
+      });
+    }
+
+    function applicaFiltriPubblicate() {
+      const filtroStato = document.getElementById('filtroStato').value;
+      const filtroCategoria = document.getElementById('filtroCategoria').value;
+
+      const filtrate = cacheSegnalazioniPubblicate.filter(d => {
+        const isRisolta = d.risolta === true;
+        
+        if (filtroStato === 'risolta' && !isRisolta) return false;
+        if (filtroStato === 'in_lavorazione' && isRisolta) return false;
+
+        const cat = getCategoriaFormattata(d);
+        if (filtroCategoria !== 'tutte' && cat !== filtroCategoria) return false;
+
+        return true;
+      });
+
+      renderizzaTabellaPubblicate(filtrate);
+    }
+
+    function renderizzaTabellaPubblicate(lista) {
+      const tbody = document.getElementById('tbodyPubblicate');
+      tbody.innerHTML = '';
+
+      if (lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Nessuna segnalazione trovata con i filtri selezionati.</td></tr>`;
+        return;
+      }
+
+      lista.forEach(d => {
+        const isRisolta = d.risolta === true;
+        const valPrivacy = normalizzaSiNo(d.Privacy);
+        const valPubFoto = normalizzaSiNo(d['Pubblicazione foto']);
+        const categoria = getCategoriaFormattata(d);
+
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${d.ID || d.id}</strong></td>
+            <td><small>${formattaData(d['Data e Ora'])}</small></td>
+            <td><span class="badge bg-secondary">${categoria}</span></td>
+            <td>${d.Indirizzo || ''}</td>
+            <td><small class="text-muted">${d.stato || ''}</small></td>
+            <td>
+              <small>Privacy: <span class="badge ${valPrivacy === 'SI' ? 'bg-success' : 'bg-danger'}">${valPrivacy}</span></small><br>
+              <small>Foto: <span class="badge ${valPubFoto === 'SI' ? 'bg-success' : 'bg-danger'}">${valPubFoto}</span></small>
+            </td>
+            <td>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" ${isRisolta ? 'checked' : ''} onchange="toggleRisolta('${d.id}', this.checked)">
+                <label class="form-check-label small fw-semibold ${isRisolta ? 'text-success' : 'text-warning'}">
+                  ${isRisolta ? 'RISOLTA' : 'IN LAVORAZIONE'}
+                </label>
+              </div>
+            </td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-primary" onclick="apriModalModifica('${d.id}', 'segnalazioni_pubblicate')">
+                <i class="bi bi-pencil me-1"></i> Modifica
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function toggleRisolta(docId, nuovoStatoRisolta) {
+      try {
+        let nuovoTestoStato = nuovoStatoRisolta ? "RISOLTO" : "IN LAVORAZIONE";
+
+        const batch = db.batch();
+        batch.update(db.collection('segnalazioni_pubblicate').doc(docId), { 
+          risolta: nuovoStatoRisolta,
+          stato: nuovoTestoStato
+        });
+        batch.update(db.collection('segnalazioni_mappa').doc(docId), { 
+          risolta: nuovoStatoRisolta,
+          stato: nuovoTestoStato
+        });
+        
+        const segDoc = await db.collection('segnalazioni').doc(docId).get();
+        if (segDoc.exists) {
+          batch.update(db.collection('segnalazioni').doc(docId), { 
+            risolta: nuovoStatoRisolta,
+            stato: nuovoTestoStato
+          });
+        }
+
+        await batch.commit();
+      } catch (err) {
+        alert("Errore durante l'aggiornamento dello stato: " + err.message);
+      }
+    }
+
+    async function apriModalModifica(docId, collezioneOrigine) {
+      try {
+        const docRef = await db.collection(collezioneOrigine).doc(docId).get();
+        if (!docRef.exists) return;
+        const d = docRef.data();
+
+        document.getElementById('editDocId').value = docId;
+        document.getElementById('editModalDocId').innerText = `(${d.ID || docId})`;
+
+        document.getElementById('editCat').value = getCategoriaFormattata(d);
+        document.getElementById('editIndirizzo').value = d.Indirizzo || '';
+        document.getElementById('editSegnalatore').value = d.Segnalatore || '';
+        document.getElementById('editEmail').value = d.Email || '';
+        document.getElementById('editTelefono').value = d.Telefono || '';
+        document.getElementById('editLat').value = d.Latitudine || '';
+        document.getElementById('editLng').value = d.Longitudine || '';
+        document.getElementById('editPrivacy').value = normalizzaSiNo(d.Privacy);
+        document.getElementById('editPubblicazioneFoto').value = normalizzaSiNo(d['Pubblicazione foto']);
+        
+        document.getElementById('editNotifica30').value = (d.notifica30Inviata === true) ? "true" : "false";
+        document.getElementById('editNotifica60').value = (d.notifica60Inviata === true) ? "true" : "false";
+
+        document.getElementById('editDesc').value = d.Descrizione || '';
+        document.getElementById('editStato').value = d.stato || '';
+
+        const fotoUrl = generaSrcAnteprima(d.Foto, d['Link Foto']);
+        const container = document.getElementById('editFotoContainer');
+        if (fotoUrl) {
+          container.innerHTML = `<img src="${fotoUrl}" class="img-detail-view shadow-sm"><br><span class="badge bg-light text-dark border mt-2">Foto Allegata</span>`;
+        } else {
+          container.innerHTML = `<div class="p-3 bg-light text-muted border rounded"><i class="bi bi-camera me-1"></i> Nessuna Foto Allegata</div>`;
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('modalModificaSegnalazione'));
+        modal.show();
+      } catch (err) {
+        alert("Errore caricamento dettagli: " + err.message);
+      }
+    }
+
+    async function salvaModificheDettagliate() {
+      const docId = document.getElementById('editDocId').value;
+      if (!docId) return;
+
+      const cat = document.getElementById('editCat').value;
+      const ind = document.getElementById('editIndirizzo').value;
+      const segnalatore = document.getElementById('editSegnalatore').value;
+      const email = document.getElementById('editEmail').value;
+      const telefono = document.getElementById('editTelefono').value;
+      const lat = parseFloat(document.getElementById('editLat').value) || 0;
+      const lng = parseFloat(document.getElementById('editLng').value) || 0;
+      const privacy = document.getElementById('editPrivacy').value;
+      const pubFoto = document.getElementById('editPubblicazioneFoto').value;
+      
+      const notifica30 = document.getElementById('editNotifica30').value === "true";
+      const notifica60 = document.getElementById('editNotifica60').value === "true";
+
+      const desc = document.getElementById('editDesc').value;
+      const stato = document.getElementById('editStato').value;
+
+      try {
+        const updates = {
+          Categoria: cat,
+          Indirizzo: ind,
+          Segnalatore: segnalatore,
+          Email: email,
+          Telefono: telefono,
+          Latitudine: lat,
+          Longitudine: lng,
+          Privacy: privacy,
+          'Pubblicazione foto': pubFoto,
+          notifica30Inviata: notifica30,
+          notifica60Inviata: notifica60,
+          Descrizione: desc,
+          stato: stato
+        };
+
+        const batch = db.batch();
+
+        const segDoc = await db.collection('segnalazioni').doc(docId).get();
+        if (segDoc.exists) batch.update(db.collection('segnalazioni').doc(docId), updates);
+
+        const pubDoc = await db.collection('segnalazioni_pubblicate').doc(docId).get();
+        if (pubDoc.exists) batch.update(db.collection('segnalazioni_pubblicate').doc(docId), updates);
+
+        const mapDoc = await db.collection('segnalazioni_mappa').doc(docId).get();
+        if (mapDoc.exists) batch.update(db.collection('segnalazioni_mappa').doc(docId), updates);
+
+        await batch.commit();
+
+        const modalEl = document.getElementById('modalModificaSegnalazione');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        modalInstance.hide();
+
+        alert("Segnalazione aggiornata con successo!");
+      } catch (err) {
+        alert("Errore durante il salvataggio: " + err.message);
+      }
+    }
+
+    async function confermaNuovaSegnalazione() {
+      const ind = document.getElementById('newIndirizzo').value;
+      const desc = document.getElementById('newDesc').value;
+
+      if (!ind || !desc) {
+        alert("Compila tutti i campi obbligatori (Indirizzo e Descrizione)!");
+        return;
+      }
+
+      const btnSalva = document.getElementById('btnSalvaSegnalazione');
+      btnSalva.disabled = true;
+      btnSalva.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Salvataggio...`;
+
+      try {
+        const cat = document.getElementById('newCat').value;
+        const segnalatore = document.getElementById('newSegnalatore').value || 'Operatore URP';
+        const email = document.getElementById('newEmail').value || '';
+        const telefono = document.getElementById('newTelefono').value || '';
+        const lat = parseFloat(document.getElementById('newLat').value) || 38.1472;
+        const lng = parseFloat(document.getElementById('newLng').value) || 15.2136;
+        const privacy = document.getElementById('newPrivacy').value;
+        const pubFoto = document.getElementById('newPubblicazioneFoto').value;
+        const stato = document.getElementById('newStato').value || 'Inserita da URP';
+        
+        const fileInput = document.getElementById('newFotoInput');
+        const fotoBlob = await getFotoBlob(fileInput.files[0]);
+
+        const counterRef = db.collection('configurazione').doc('contatore_segnalazioni');
+        let nuovoIdFormattato = "";
+        
+        await db.runTransaction(async (transaction) => {
+          const counterDoc = await transaction.get(counterRef);
+          let nuovoNumero = 1;
+          if (counterDoc.exists && counterDoc.data().ultimoNumero) {
+            nuovoNumero = counterDoc.data().ultimoNumero + 1;
+          }
+          nuovoIdFormattato = "SEGN-" + String(nuovoNumero).padStart(3, '0');
+          transaction.set(counterRef, { ultimoNumero: nuovoNumero }, { merge: true });
+        });
+
+        const dataObj = {
+          ID: nuovoIdFormattato,
+          'Data e Ora': firebase.firestore.Timestamp.now(),
+          Categoria: cat,
+          Descrizione: desc,
+          Indirizzo: ind,
+          Latitudine: lat,
+          Longitudine: lng,
+          Segnalatore: segnalatore,
+          Email: email,
+          Telefono: telefono,
+          Privacy: privacy,
+          'Pubblicazione foto': pubFoto,
+          'Link Foto': '',
+          Foto: fotoBlob,
+          approvata: 'SI',
+          stato: stato,
+          risolta: false,
+          notifica30Inviata: false,
+          notifica60Inviata: false
+        };
+
+        const batch = db.batch();
+        batch.set(db.collection('segnalazioni').doc(nuovoIdFormattato), dataObj);
+        batch.set(db.collection('segnalazioni_pubblicate').doc(nuovoIdFormattato), dataObj);
+        batch.set(db.collection('segnalazioni_mappa').doc(nuovoIdFormattato), {
+          ID: nuovoIdFormattato,
+          'Data e Ora': dataObj['Data e Ora'],
+          Categoria: cat,
+          Descrizione: desc,
+          Latitudine: lat,
+          Longitudine: lng,
+          Indirizzo: ind,
+          Privacy: privacy,
+          'Pubblicazione foto': pubFoto,
+          'Link Foto': '',
+          Foto: fotoBlob,
+          stato: stato,
+          risolta: false,
+          notifica30Inviata: false,
+          notifica60Inviata: false,
+          'Segnala ancora presente': 0,
+          'Segnala risolta': 0
+        });
+
+        await batch.commit();
+
+        const modalElement = document.getElementById('modalNuovaSegnalazioneModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        modalInstance.hide();
+        document.getElementById('formNuovaSegnalazione').reset();
+
+        alert(`Segnalazione ${nuovoIdFormattato} creata e pubblicata con successo!`);
+      } catch (err) {
+        alert("Errore durante il salvataggio: " + err.message);
+      } finally {
+        btnSalva.disabled = false;
+        btnSalva.innerHTML = `<i class="bi bi-save me-1"></i> Salva e Pubblica`;
+      }
+    }
+
+    // 3. NEWS (Con fallback in caso di mancanza di indice Firestore)
+    function caricaNews() {
+      db.collection('news').orderBy('data', 'desc').onSnapshot(snapshot => {
+        renderizzaTabellaNews(snapshot);
+      }, error => {
+        console.warn("Indice orderBy('data') mancante per news, eseguo fallback senza ordinamento:", error);
+        db.collection('news').get().then(snapshot => {
+          renderizzaTabellaNews(snapshot);
+        }).catch(err => console.error("Errore recupero news:", err));
+      });
+    }
+
+    function renderizzaTabellaNews(snapshot) {
+      const tbody = document.getElementById('tbodyNews');
+      tbody.innerHTML = '';
+      if(snapshot.empty) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Nessuna news presente.</td></tr>`;
+        return;
+      }
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        const dataPulita = formattaData(d.data);
+        const isPubblicata = d.pubblicata === true;
+
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${d.titolo || ''}</strong></td>
+            <td><small>${dataPulita}</small></td>
+            <td>
+              <span class="badge ${isPubblicata ? 'bg-success' : 'bg-secondary'}">
+                ${isPubblicata ? 'Pubblicata (true)' : 'Non Pubblicata (false)'}
+              </span>
+            </td>
+            <td class="text-truncate" style="max-width:250px;">${d.testo || ''}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-warning me-1" onclick="apriModalNews('${doc.id}', '${encodeURIComponent(d.titolo || '')}', ${isPubblicata}, '${encodeURIComponent(d.testo || '')}')">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="eliminaNews('${doc.id}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function apriModalNews(id = '', titolo = '', pubblicata = true, testo = '') {
+      document.getElementById('newsId').value = id;
+      document.getElementById('newsTitolo').value = id ? decodeURIComponent(titolo) : '';
+      document.getElementById('newsPubblicata').value = pubblicata ? "true" : "false";
+      document.getElementById('newsTesto').value = id ? decodeURIComponent(testo) : '';
+      document.getElementById('newsModalTitle').innerText = id ? "Modifica News" : "Pubblica Nuova News";
+      
+      const modal = new bootstrap.Modal(document.getElementById('modalNews'));
+      modal.show();
+    }
+
+    async function salvaNews() {
+      const id = document.getElementById('newsId').value;
+      const titolo = document.getElementById('newsTitolo').value;
+      const pubblicata = document.getElementById('newsPubblicata').value === "true";
+      const testo = document.getElementById('newsTesto').value;
+
+      if (!titolo || !testo) {
+        alert("Compila titolo e contenuto della news!");
+        return;
+      }
+
+      try {
+        const payload = {
+          titolo,
+          pubblicata,
+          testo,
+          data: firebase.firestore.Timestamp.now()
+        };
+
+        if (id) {
+          await db.collection('news').doc(id).update(payload);
+        } else {
+          await db.collection('news').add(payload);
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('modalNews')).hide();
+        alert("News salvata con successo!");
+      } catch (err) {
+        alert("Errore salvataggio news: " + err.message);
+      }
+    }
+
+    async function eliminaNews(id) {
+      if (confirm("Vuoi eliminare questa news?")) {
+        await db.collection('news').doc(id).delete();
+      }
+    }
+
+    // 4. SPONSOR (Con fallback in caso di mancanza di indice Firestore)
+    function caricaSponsor() {
+      db.collection('sponsor').orderBy('ordine', 'asc').onSnapshot(snapshot => {
+        renderizzaTabellaSponsor(snapshot);
+      }, error => {
+        console.warn("Indice orderBy('ordine') mancante per sponsor, eseguo fallback senza ordinamento:", error);
+        db.collection('sponsor').get().then(snapshot => {
+          renderizzaTabellaSponsor(snapshot);
+        }).catch(err => console.error("Errore recupero sponsor:", err));
+      });
+    }
+
+    function renderizzaTabellaSponsor(snapshot) {
+      const tbody = document.getElementById('tbodySponsor');
+      tbody.innerHTML = '';
+      if(snapshot.empty) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Nessun sponsor presente.</td></tr>`;
+        return;
+      }
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        const isPubblicato = d.pubblicato === true;
+        const imgUrl = d.immagineUrl || '';
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${imgUrl ? `<img src="${imgUrl}" class="img-preview" style="width:50px;height:50px;object-fit:cover;border-radius:6px;">` : `<div class="bg-light text-center text-muted" style="width:50px;height:50px;line-height:50px;border-radius:6px;"><i class="bi bi-image"></i></div>`}</td>
+            <td><strong>${d.nome || ''}</strong></td>
+            <td><span class="badge bg-dark">${d.ordine !== undefined ? d.ordine : 1}</span></td>
+            <td>
+              <span class="badge ${isPubblicato ? 'bg-success' : 'bg-secondary'}">
+                ${isPubblicato ? 'Pubblicato (true)' : 'Non Pubblicato (false)'}
+              </span>
+            </td>
+            <td>
+              <small class="d-block text-truncate" style="max-width:200px;"><a href="${d.linkUrl || '#'}" target="_blank"><i class="bi bi-link-45deg"></i> ${d.linkUrl || '--'}</a></small>
+              <small class="text-muted text-truncate d-block" style="max-width:200px;">${d.descrizione || ''}</small>
+            </td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-warning me-1" onclick="apriModalSponsor('${doc.id}', '${encodeURIComponent(d.nome || '')}', '${encodeURIComponent(d.descrizione || '')}', '${encodeURIComponent(d.immagineUrl || '')}', '${encodeURIComponent(d.linkUrl || '')}', ${d.ordine || 1}, ${isPubblicato})">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="eliminaSponsor('${doc.id}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function apriModalSponsor(id = '', nome = '', descrizione = '', immagineUrl = '', linkUrl = '', ordine = 1, pubblicato = true) {
+      document.getElementById('sponsorId').value = id;
+      document.getElementById('sponsorNome').value = id ? decodeURIComponent(nome) : '';
+      document.getElementById('sponsorDescrizione').value = id ? decodeURIComponent(descrizione) : '';
+      document.getElementById('sponsorImmagineUrl').value = id ? decodeURIComponent(immagineUrl) : '';
+      document.getElementById('sponsorLinkUrl').value = id ? decodeURIComponent(linkUrl) : '';
+      document.getElementById('sponsorOrdine').value = id ? ordine : 1;
+      document.getElementById('sponsorPubblicato').value = pubblicato ? "true" : "false";
+      document.getElementById('sponsorModalTitle').innerText = id ? "Modifica Sponsor" : "Inserisci Partner";
+
+      const modal = new bootstrap.Modal(document.getElementById('modalSponsor'));
+      modal.show();
+    }
+
+    async function salvaSponsor() {
+      const id = document.getElementById('sponsorId').value;
+      const nome = document.getElementById('sponsorNome').value;
+      const descrizione = document.getElementById('sponsorDescrizione').value;
+      const immagineUrl = document.getElementById('sponsorImmagineUrl').value;
+      const linkUrl = document.getElementById('sponsorLinkUrl').value;
+      const ordine = parseInt(document.getElementById('sponsorOrdine').value) || 1;
+      const pubblicato = document.getElementById('sponsorPubblicato').value === "true";
+
+      if (!nome) {
+        alert("Inserisci il nome dello sponsor!");
+        return;
+      }
+
+      try {
+        const payload = {
+          nome,
+          descrizione,
+          immagineUrl,
+          linkUrl,
+          ordine,
+          pubblicato
+        };
+
+        if (id) {
+          await db.collection('sponsor').doc(id).update(payload);
+        } else {
+          await db.collection('sponsor').add(payload);
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('modalSponsor')).hide();
+        alert("Sponsor salvato con successo!");
+      } catch (err) {
+        alert("Errore salvataggio sponsor: " + err.message);
+      }
+    }
+
+    async function eliminaSponsor(id) {
+      if (confirm("Vuoi eliminare questo sponsor?")) {
+        await db.collection('sponsor').doc(id).delete();
+      }
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
